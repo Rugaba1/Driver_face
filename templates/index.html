@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Driver Registration</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <style>
+    #face {
+      transform: rotate(180deg);
+    }
+  </style>
+  
+  <div class="container">
+    <header class="my-4">
+      <h1 class="text-center">Add New Driver</h1>
+    </header>
+    <main>
+      <div class="row justify-content-center">
+        <div class="col-md-6">
+          <div id="capture-form" class="card p-4 shadow-sm">
+            <form id="user-form">
+              <div id="result" class="text-success mb-3"></div>
+              <div class="mb-3 text-center">
+                <img src="" alt="Captured Face" id="face" class="img-thumbnail" crossorigin="anonymous" />
+              </div>
+              <div class="mb-3">
+                <label for="first_name" class="form-label">First Name</label>
+                <input type="text" name="first_name" class="form-control" required placeholder="Enter First Name" />
+              </div>
+              <div class="mb-3">
+                <label for="last_name" class="form-label">Last Name</label>
+                <input type="text" name="last_name" class="form-control" required placeholder="Enter Last Name" />
+              </div>
+              <div class="mb-3">
+                <label for="gender" class="form-label">Gender</label>
+                <select name="gender" class="form-select">
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="category" class="form-label">Category</label>
+                <select name="category" class="form-select">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="address" class="form-label">Location</label>
+                <select name="address" id="address" class="form-select">
+                  <option value="">Select an address</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="citizen" class="form-label">Citizen-Info</label>
+                <select name="citizen" id="citizen" class="form-select">
+                  <option value="">Select your ID</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="license" class="form-label">Driving License No</label>
+                <input type="number" name="license_no" class="form-control" required placeholder="Enter Driving Licence no" />
+              </div>
+              <div class="text-center">
+                <button id="capture-btn" class="btn btn-secondary mb-2" type="button">Capture</button>
+                <button id="submit-btn" class="btn btn-success mb-2" type="submit" disabled>Add Face</button>
+                <button id="reset-btn" class="btn btn-danger mb-2" type="button">Reset</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    window.addEventListener("load", () => {
+      const face = document.getElementById("face");
+      const submitBtn = document.getElementById("submit-btn");
+      submitBtn.disabled = true;
+      const captureBtn = document.getElementById("capture-btn");
+      const resetBtn = document.getElementById("reset-btn");
+      const result = document.getElementById("result");
+      const userForm = document.getElementById("user-form");
+      let imageFile = null;
+      const cameraIp = "{{cam_ip}}";  
+      const captureUrl = `${cameraIp}/cam/1/frame.jpg`;
+      const streamUrl = `${cameraIp}/video?640x480`;
+      face.setAttribute("src", streamUrl);
+
+      captureBtn.addEventListener("click", async () => {
+        try {
+          const resp = await fetch(captureUrl);
+          const data = await resp.blob();
+          if (resp.ok) {
+            const file = new File([data], "face-image");
+            const url = URL.createObjectURL(file);
+            face.setAttribute("src", url);
+            imageFile = file;
+            submitBtn.disabled = false;
+          }
+        } catch (error) {
+          console.log(error.message);
+        }
+      });
+
+      resetBtn.addEventListener("click", () => {
+        face.setAttribute("src", streamUrl);
+        submitBtn.disabled = true;
+        result.innerHTML = "";
+      });
+
+      submitBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(userForm);
+        formData.append("image", imageFile, "image.jpg");
+        try {
+          submitBtn.textContent = "Uploading ...";
+          const resp = await fetch("/add-face", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await resp.json();
+          if (resp.ok) {
+            result.innerHTML = "Face image uploaded successfully";
+          } else {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Add Face";
+            alert(data.message);
+          }
+        } catch (error) {
+          alert(error.message);
+        } finally {
+          submitBtn.textContent = "Add Face";
+        }
+      });
+
+      face.addEventListener("error", () => {
+        result.innerHTML = "Failed to load";
+      });
+    });
+
+    function fetchAddressesAndCitizens() {
+      fetch('/get-addresses')
+        .then(response => response.json())
+        .then(data => {
+          const districtSelect = document.getElementById('address');
+          const firstnameSelect = document.getElementById('citizen');
+
+          data.addresses.forEach(address => {
+            const districtOption = document.createElement('option');
+            districtOption.value = address.aid;
+            districtOption.text = address.district;
+            districtSelect.appendChild(districtOption);
+          });
+
+          data.citizens.forEach(citizen => {
+            const firstnameOption = document.createElement('option');
+            firstnameOption.value = citizen.Nid;
+            firstnameOption.text = citizen.Firstname;
+            firstnameSelect.appendChild(firstnameOption);
+          });
+        })
+        .catch(error => console.error('Error fetching data:', error));
+    }
+
+    window.onload = fetchAddressesAndCitizens;
+  </script>
+</body>
+</html>

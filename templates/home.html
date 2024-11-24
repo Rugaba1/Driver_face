@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Address Select</title>
+</head>
+<body>
+
+    <label for="address">Select Address:</label>
+    <select id="address">
+        <option value="">Select an address</option>
+    </select>
+
+    <script>
+        // Function to fetch data from the API and populate the select box
+        function fetchAddresses() {
+            fetch('/get-addresses')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('address');
+                    
+                    data.forEach(address => {
+                        const option = document.createElement('option');
+                        option.value = address.aid;  // Use aid as value
+                        option.text = address.district;  // Display location
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Fetch addresses on page load
+        window.onload = fetchAddresses;
+    </script>
+
+</body>
+</html>
